@@ -1,5 +1,4 @@
-import { Audio } from 'expo-av';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Platform,
   SafeAreaView,
@@ -12,31 +11,8 @@ import {
 export default function App() {
   const [expression, setExpression] = useState<string>('');
   const [result, setResult] = useState<string>('');
-  
-  const [sound, setSound] = useState<Audio.Sound>();
-
-  useEffect(() => {
-    return sound
-      ? () => { sound.unloadAsync(); }
-      : undefined;
-  }, [sound]);
-
-  const playSound = () => {
-    Audio.Sound.createAsync(
-      require('../../assets/button_click.mp3') 
-    )
-      .then((response) => {
-        setSound(response.sound);
-        return response.sound.playAsync();
-      })
-      .catch((error) => {
-        console.log('Sound playback failed', error);
-      });
-  };
 
   const handlePress = useCallback((value: string) => {
-    playSound();
-
     if (value === 'C') {
       setExpression('');
       setResult('');
@@ -64,10 +40,16 @@ export default function App() {
         .replace(/\^/g, '**');
 
       const calculatedResult = new Function('return ' + evalString)();
+      
+      if (!isFinite(calculatedResult) || isNaN(calculatedResult)) {
+         setResult('ERR_COMPUTATION');
+         return;
+      }
+
       const finalResult = String(Math.round(calculatedResult * 100000000) / 100000000);
       setResult(finalResult);
     } catch (error) {
-      setResult('Error');
+      setResult('SYNTAX_ERR');
     }
   };
 
@@ -87,19 +69,21 @@ export default function App() {
   return (
     <View style={styles.webWrapper}>
       <SafeAreaView style={styles.container}>
-        {/* Display Section */}
+        {/* Hacker Display Section */}
         <View style={styles.displayContainer}>
-          <Text style={styles.expressionText} numberOfLines={1} adjustsFontSizeToFit>
-            {expression}
-          </Text>
-          <Text style={styles.resultText} numberOfLines={1} adjustsFontSizeToFit>
-            {result || '0'}
-          </Text>
+          <Text style={styles.terminalHeader}>TERMINAL // CALC_NODE_V3.1</Text>
+          <View style={styles.screenInner}>
+            <Text style={styles.expressionText} numberOfLines={2} adjustsFontSizeToFit>
+              {expression ? `> ${expression}` : '> _'}
+            </Text>
+            <Text style={styles.resultText} numberOfLines={1} adjustsFontSizeToFit>
+              {result ? `[ ${result} ]` : ''}
+            </Text>
+          </View>
         </View>
 
-        {/* Keypad Section */}
+        {/* Cyberpunk Keypad Section */}
         <View style={styles.keypadContainer}>
-          {/* Advanced Operations Pad */}
           <View style={styles.advancedPad}>
             {advancedButtons.map((row, rowIndex) => (
               <View key={'adv-' + rowIndex} style={styles.row}>
@@ -116,7 +100,6 @@ export default function App() {
             ))}
           </View>
 
-          {/* Basic Operations Pad */}
           <View style={styles.basicPad}>
             {basicButtons.map((row, rowIndex) => (
               <View key={'basic-' + rowIndex} style={styles.row}>
@@ -126,7 +109,8 @@ export default function App() {
                     style={[
                       styles.button,
                       btn === '=' && styles.equalsButton,
-                      ['÷', '×', '-', '+'].includes(btn) && styles.operatorButton
+                      ['÷', '×', '-', '+'].includes(btn) && styles.operatorButton,
+                      ['C', 'DEL'].includes(btn) && styles.actionButton
                     ]}
                     onPress={() => handlePress(btn)}
                   >
@@ -147,11 +131,13 @@ export default function App() {
   );
 }
 
-// --- FULLY RESPONSIVE LIGHT THEME ---
+// --- CYBERPUNK / TERMINAL STYLESHEET ---
+const FONT_FAMILY = Platform.OS === 'ios' ? 'Courier' : 'monospace';
+
 const styles = StyleSheet.create({
   webWrapper: {
     flex: 1,
-    backgroundColor: '#E5E7EB', // Lighter grey for outer web background
+    backgroundColor: '#050505', 
     alignItems: 'center', 
     justifyContent: 'center',
   },
@@ -159,102 +145,120 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     maxWidth: 420, 
-    backgroundColor: '#F9FAFB', 
+    backgroundColor: '#09090B', 
     ...(Platform.OS === 'web' && {
-      maxHeight: 850, // Prevents it from getting absurdly tall on large monitors
-      borderRadius: 40,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 20 },
-      shadowOpacity: 0.15,
-      shadowRadius: 30,
-      overflow: 'hidden',
+      maxHeight: 850,
+      borderWidth: 2,
+      borderColor: '#39FF14', // Neon green border for web
     }),
   },
   displayContainer: {
+    flex: 1.2,
+    padding: 15,
+    backgroundColor: '#09090B',
+  },
+  terminalHeader: {
+    color: '#39FF14',
+    fontFamily: FONT_FAMILY,
+    fontSize: 12,
+    marginBottom: 10,
+    opacity: 0.7,
+  },
+  screenInner: {
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
-    padding: 30,
-    backgroundColor: '#F9FAFB',
+    padding: 15,
+    backgroundColor: '#030303', // Slightly darker for the "screen"
+    borderWidth: 1,
+    borderColor: '#39FF14',
+    borderStyle: 'dashed', // Dashed border for retro feel
   },
   expressionText: {
-    fontSize: 28,
-    color: '#9CA3AF',
-    marginBottom: 5,
-    fontWeight: '400',
+    fontSize: 24,
+    color: '#00FFFF', // Cyan for input
+    fontFamily: FONT_FAMILY,
+    marginBottom: 15,
+    textAlign: 'left',
+    width: '100%',
   },
   resultText: {
-    fontSize: 64,
-    color: '#111827',
-    fontWeight: '300',
+    fontSize: 48,
+    color: '#39FF14', // Neon green for output
+    fontFamily: FONT_FAMILY,
+    textAlign: 'right',
+    fontWeight: 'bold',
+    width: '100%',
   },
   keypadContainer: {
-    flex: 2.5, // Gives more relative space to the keypad vs display
+    flex: 2.5, 
     padding: 15,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 35,
-    borderTopRightRadius: 35,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.03,
-    shadowRadius: 15,
-    elevation: 10,
+    backgroundColor: '#09090B',
   },
   advancedPad: {
-    flex: 1.2, // Proportional height
-    marginBottom: 10,
+    flex: 1.2,
+    marginBottom: 15,
   },
   basicPad: {
-    flex: 3, // Basic pad gets more height than the advanced pad
+    flex: 3, 
   },
   row: {
-    flex: 1, // Forces rows to equally share the vertical space
+    flex: 1, 
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
   button: {
-    flex: 1, // Forces buttons to share the horizontal space evenly
-    marginHorizontal: 5, // Replaces fixed widths to allow fluid scaling
-    backgroundColor: '#F3F4F6',
+    flex: 1, 
+    marginHorizontal: 5,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#444', // Dark grey default border
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 1000, // Extremely high number forces pill/circle shape
+    borderRadius: 2, // Sharp corners
   },
   advancedButton: {
     flex: 1,
-    marginHorizontal: 4,
-    backgroundColor: '#F3F4F6',
+    marginHorizontal: 5,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#555',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 2,
   },
   advancedButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#888',
+    fontFamily: FONT_FAMILY,
+    fontSize: 14,
   },
   buttonText: {
-    fontSize: 26,
-    color: '#374151',
-    fontWeight: '500',
+    fontSize: 28,
+    color: '#E0E0E0',
+    fontFamily: FONT_FAMILY,
   },
-  operatorButton: {
-    backgroundColor: '#EEF2FF',
-  },
-  operatorButtonText: {
-    color: '#4F46E5',
-    fontSize: 32,
+  actionButton: {
+    borderColor: '#FF003C', // Cyberpunk Red
+    backgroundColor: 'rgba(255, 0, 60, 0.05)', // Faint red tint
   },
   actionButtonText: {
-    color: '#F43F5E',
-    fontWeight: '600',
+    color: '#FF003C', 
+  },
+  operatorButton: {
+    borderColor: '#FF00FF', // Magenta
+    backgroundColor: 'rgba(255, 0, 255, 0.05)',
+  },
+  operatorButtonText: {
+    color: '#FF00FF', 
+    fontSize: 32,
   },
   equalsButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#39FF14', // Solid Neon Green
+    borderColor: '#39FF14',
   },
   equalsButtonText: {
-    color: '#FFFFFF',
+    color: '#000000', // Black text to pop against the green
     fontWeight: 'bold',
     fontSize: 34,
   },
